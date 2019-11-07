@@ -3,7 +3,9 @@ import { connect } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { TextField, FormControl, Button, IconButton, InputAdornment, CircularProgress } from '@material-ui/core'
 import { Visibility, VisibilityOff, CheckCircle } from '@material-ui/icons'
-import { signup } from '../store/actions'
+import { signup, getUsernames, emailCheck } from '../store/actions'
+import {usernameSearch, fetchAllUsers} from '../Helpers/usernameAlgo'
+import axios from 'axios'
 
 const addCorrect = fieldSet => {
     if (fieldSet.classList.contains('incorrect')) fieldSet.classList.remove('incorrect')
@@ -29,14 +31,20 @@ class SignUp extends Component {
         confirmed: false,
         showPassword: false,
         loading: false,
-        success: false
+        success: false,
+        github: []
+    }
+
+    async componentDidMount() {
+        await this.props.getUsernames()
+        fetchAllUsers()
     }
 
     checkUserInfo = () => {
         const name = document.querySelector('#name').value
         const email = document.querySelector('#email').value
         const username = document.querySelector('#username').value
-        if(name.length > 0 && email.length > 0 && username.length) {
+        if (name.length > 0 && email.length > 0 && username.length) {
             this.setState({
                 userInfo: true
             })
@@ -63,15 +71,56 @@ class SignUp extends Component {
         }
     }
 
-    checkEmail = () => {
+    checkUsername = () => {
+        // let taken = false
+        // const fieldSet = document.querySelector('.username-sign fieldset')
+        // const usernames = this.props.usernames.usernames
+        // const username = document.querySelector('#username').value
+        // if (username.length > 6) {
+        //     usernames.forEach(element => {
+        //         if (element.username === username) {
+        //             taken = true
+        //             // break
+        //         } 
+        //     });
+        //     if (!taken) {
+        //         this.setState({
+        //             userInfo: true
+        //         })
+        //         addCorrect(fieldSet)
+        //     } else {
+        //         this.setState({
+        //             userInfo: false
+        //         })
+        //         addIncorrect(fieldSet)
+        //     }
+        // } else {
+        //     this.setState({
+        //         userInfo: false
+        //     })
+        //     addIncorrect(fieldSet)
+        // }
+        usernameSearch()
+    }
+
+    checkEmail = async () => {
         const fieldSet = document.querySelector('.user-email fieldset')
         const email = document.querySelector('#email').value
         const requirement = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(.\w{2,3})+$/
         if (email.match(requirement)) {
-            this.setState({
-                userInfo: true
-            })
-            addCorrect(fieldSet)
+            await this.props.emailCheck(email)
+            console.log(this.props.emailTaken)
+            if (!this.props.emailTaken.email) {
+                this.setState({
+                    userInfo: true
+                })
+                addCorrect(fieldSet)
+            } else {
+                this.setState({
+                    userInfo: false
+                })
+                addIncorrect(fieldSet)
+            }
         } else {
             this.setState({
                 userInfo: false
@@ -131,13 +180,14 @@ class SignUp extends Component {
         if (e.target.name === 'password') this.checkPassword()
         if (e.target.name === 'name') this.checkName()
         if (e.target.name === 'email') this.checkEmail()
+        if (e.target.name === 'username') this.checkUsername()
         if (this.state.newUser.confirm.length > 0) this.confirmPassword()
         this.checkUserInfo()
     }
 
     handleSubmit = e => {
         e.preventDefault()
-        if(!this.state.loading) {
+        if (!this.state.loading) {
             this.setState({
                 loading: true,
                 success: false,
@@ -150,17 +200,18 @@ class SignUp extends Component {
             })
         }, 2000);
         console.log(this.state.newUser)
+        this.props.signup(this.state.newUser)
     }
 
     ButtonRender = () => {
         if (this.state.passReqs && this.state.confirmed && this.state.userInfo) {
             return (
                 <>
-                <Button type='submit' color='primary' variant='contained' size='large'>
-                    Sign Up
+                    <Button type='submit' color='primary' variant='contained' size='large'>
+                        Sign Up
                 </Button>
-                {this.state.loading && <CircularProgress size={24} />}
-                {this.state.success && <CheckCircle />}
+                    {this.state.loading && <CircularProgress size={24} />}
+                    {this.state.success && <CheckCircle />}
                 </>
             )
         } else {
@@ -173,6 +224,7 @@ class SignUp extends Component {
     }
 
     render() {
+        console.log(this.state.github)
         return (
             <div className='signupform'>
                 <form onSubmit={this.handleSubmit}>
@@ -267,12 +319,17 @@ class SignUp extends Component {
     }
 }
 
-const mapStateToProps = ({ signingUp, signedUp }) => ({
+const mapStateToProps = ({ signingUp, signedUp, checkingEmail, gettingUsernames, usernames, emailTaken, error }) => ({
     signingUp,
-    signedUp
+    signedUp,
+    checkingEmail,
+    gettingUsernames,
+    usernames,
+    emailTaken,
+    error
 })
 
 export default connect(
     mapStateToProps,
-    { signup }
+    { signup, emailCheck, getUsernames }
 )(SignUp)
